@@ -132,9 +132,9 @@ class TestSurveyListView:
         assert response.status_code == 200
         assert response.json()["count"] == 3
 
-    def test_create_survey(self, api_client):
+    def test_create_survey(self, auth_client):
         payload = {"name": "Levels.fyi 2024", "source": "levels", "year": 2024}
-        response = api_client.post(
+        response = auth_client.post(
             reverse("survey-list"),
             data=json.dumps(payload),
             content_type="application/json",

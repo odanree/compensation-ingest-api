@@ -17,12 +17,12 @@ class SurveySubmissionFactory(factory.django.DjangoModelFactory):
         model = SurveySubmission
 
     survey = factory.SubFactory(SurveyFactory)
-    raw_data = factory.LazyAttribute(
-        lambda o: {
-            "role_title": "Software Engineer",
+    raw_data = factory.LazyAttributeSequence(
+        lambda o, n: {
+            "role_title": f"Software Engineer {n}",
             "location": "San Francisco, CA",
             "base_salary": 150000,
-            "total_comp": 220000,
+            "total_comp": 220000 + n,
             "level": "L4",
             "years_experience": 5,
             "company_size": "enterprise",
