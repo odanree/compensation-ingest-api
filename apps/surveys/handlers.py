@@ -16,27 +16,39 @@ teardown / worker startup all see the same registry. Import order does not
 matter — a handler_key referenced by a QuoteSource before its handler app
 is loaded will raise UnknownIngestHandler at dispatch time.
 """
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from rest_framework.serializers import Serializer
     from apps.surveys.models import QuoteSubmission
 
 Handler = Callable[["QuoteSubmission"], None]
+RecordValidator = type  # a DRF Serializer subclass (not instance)
 
 _HANDLERS: dict[str, Handler] = {}
+_VALIDATORS: dict[str, Optional[RecordValidator]] = {}
 
 
 class UnknownIngestHandler(LookupError):
     """Raised when a QuoteSource.handler_key has no registered handler."""
 
 
-def register_ingest_handler(key: str) -> Callable[[Handler], Handler]:
-    """Decorator: register a handler function under `key`.
+def register_ingest_handler(
+    key: str,
+    *,
+    validator: Optional[RecordValidator] = None,
+) -> Callable[[Handler], Handler]:
+    """Decorator: register a handler function (and optional record validator) under `key`.
 
     Usage:
-        @register_ingest_handler("solar_quote")
-        def solar_quote_handler(submission):
+        @register_ingest_handler("my_domain", validator=MyRecordSerializer)
+        def my_domain_handler(submission):
             ...
+
+    The `validator` is a DRF Serializer class run per-record by the generic
+    IngestRequestSerializer before submissions are created. Handlers that
+    accept any-shape input (or want to defer validation to the handler
+    itself) can omit `validator`.
     """
     def decorator(func: Handler) -> Handler:
         if key in _HANDLERS and _HANDLERS[key] is not func:
@@ -46,6 +58,7 @@ def register_ingest_handler(key: str) -> Callable[[Handler], Handler]:
                 f"attempted re-register by {func.__module__}.{func.__qualname__}"
             )
         _HANDLERS[key] = func
+        _VALIDATORS[key] = validator
         return func
     return decorator
 
@@ -59,6 +72,11 @@ def get_handler(key: str) -> Handler:
             f"No ingest handler registered for key '{key}'. "
             f"Registered: {sorted(_HANDLERS)}"
         )
+
+
+def get_record_validator(key: str) -> Optional[RecordValidator]:
+    """Look up the record validator for `key`. Returns None if none registered."""
+    return _VALIDATORS.get(key)
 
 
 def registered_keys() -> list[str]:

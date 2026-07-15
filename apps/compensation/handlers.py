@@ -8,10 +8,11 @@ fan-out, the state machine and retry policy. This handler only owns:
 brand → tier, location → metro, size → band, cost derivation, and the
 final upsert into SolarQuote.
 """
+from apps.compensation.serializers import SolarQuoteRecordSerializer
 from apps.surveys.handlers import register_ingest_handler
 
 
-@register_ingest_handler("solar_quote")
+@register_ingest_handler("solar_quote", validator=SolarQuoteRecordSerializer)
 def solar_quote_handler(submission) -> None:
     from apps.compensation.models import Location, SolarQuote, SystemConfig
     from apps.surveys.normalizers import (

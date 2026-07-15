@@ -41,20 +41,30 @@ Minimum-invasive introduction of the plugin extension point. No renames,
 no endpoint changes, no data migration beyond one additive field.
 
 - `apps/surveys/handlers.py` — module-level registry with
-  `@register_ingest_handler(key)` decorator, `get_handler(key)` lookup,
-  `UnknownIngestHandler` exception.
+  `@register_ingest_handler(key, validator=…)` decorator, `get_handler(key)`
+  lookup, `get_record_validator(key)` lookup, `UnknownIngestHandler`
+  exception. The optional `validator` is a DRF Serializer class that the
+  generic `IngestRequestSerializer` runs per-record; handlers that accept
+  any-shape input can omit it.
 - `QuoteSource.handler_key: CharField` — default `"solar_quote"` so every
   existing source auto-opts into the current behavior.
 - `apps/surveys/tasks.process_quote` renamed to `process_submission`;
   body becomes a thin dispatcher (`handler = get_handler(...)`).
   Handler owns normalization and domain-row persistence.
 - `apps/compensation/handlers.solar_quote_handler` — receives the solar
-  normalization body verbatim, registers under `"solar_quote"`.
+  normalization body verbatim, registers under `"solar_quote"` with
+  `SolarQuoteRecordSerializer` (moved from `apps/surveys/serializers.py`
+  to `apps/compensation/serializers.py`) as its record validator.
+- `apps/surveys/serializers.IngestRequestSerializer` — becomes generic:
+  validates envelope (`quote_source_id` exists, `records` is a bounded
+  list) then dispatches per-record validation to whichever DRF Serializer
+  the source's handler registered.
 - `apps/compensation/apps.SolarConfig.ready()` — imports handlers module
   to trigger registration at Django boot.
 - `apps/jobposts/` — new second-consumer skeleton. Stub `"job_post"`
-  handler that validates a `title` field is present; no persistence yet.
-  Proves the extension point works.
+  handler with a minimal `JobPostRecordSerializer` (title required, plus
+  optional company/location/salary); no persistence yet. Proves the
+  extension point works end-to-end (API validation → handler dispatch).
 
 **Backward compat:** all existing rows in `QuoteSource` get
 `handler_key="solar_quote"` from the migration's `default=`, so the live
