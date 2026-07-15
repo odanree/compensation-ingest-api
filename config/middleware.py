@@ -19,6 +19,15 @@ class CloudflareRealIPMiddleware:
 
     def __call__(self, request):
         real_ip = request.META.get("HTTP_CF_CONNECTING_IP")
+        # DIAG (temporary): log what we actually see for one round of throttle testing.
+        print(
+            f"[cf-diag] path={request.path} "
+            f"REMOTE_ADDR={request.META.get('REMOTE_ADDR')} "
+            f"CF_CIP={real_ip} "
+            f"XFF={request.META.get('HTTP_X_FORWARDED_FOR')} "
+            f"XRIP={request.META.get('HTTP_X_REAL_IP')}",
+            flush=True,
+        )
         if real_ip:
             request.META["REMOTE_ADDR"] = real_ip
         return self.get_response(request)
