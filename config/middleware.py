@@ -19,15 +19,13 @@ class CloudflareRealIPMiddleware:
 
     def __call__(self, request):
         real_ip = request.META.get("HTTP_CF_CONNECTING_IP")
-        # DIAG (temporary): log what we actually see for one round of throttle testing.
-        print(
-            f"[cf-diag] path={request.path} "
-            f"REMOTE_ADDR={request.META.get('REMOTE_ADDR')} "
-            f"CF_CIP={real_ip} "
-            f"XFF={request.META.get('HTTP_X_FORWARDED_FOR')} "
-            f"XRIP={request.META.get('HTTP_X_REAL_IP')}",
-            flush=True,
-        )
         if real_ip:
             request.META["REMOTE_ADDR"] = real_ip
+            # DRF's SimpleRateThrottle.get_ident() reads X-Forwarded-For in
+            # preference to REMOTE_ADDR. Caddy sets XFF to the immediate
+            # upstream (a Cloudflare edge, different per request), which
+            # defeats per-client throttling. Overwrite XFF to the real client
+            # IP so downstream code — DRF throttles, access logs, geoblocks —
+            # all agree on identity.
+            request.META["HTTP_X_FORWARDED_FOR"] = real_ip
         return self.get_response(request)
