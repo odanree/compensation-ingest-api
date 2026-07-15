@@ -151,7 +151,16 @@ def normalize_location(raw_location: str) -> dict:
     parts = [p.strip() for p in raw.split(",")]
     if len(parts) >= 2:
         city = parts[0]
-        state = parts[1].upper() if len(parts[1].strip()) <= 3 else parts[1]
+        state_raw = parts[1].strip()
+        # Normalize state to 2-letter abbreviation via STATE_ALIASES; falls
+        # back to uppercasing short strings, then to raw pass-through.
+        state_alias = STATE_ALIASES.get(state_raw.lower())
+        if state_alias is not None:
+            state = state_alias[1]
+        elif len(state_raw) <= 3:
+            state = state_raw.upper()
+        else:
+            state = state_raw
         country = parts[2] if len(parts) > 2 else "US"
         metro = METRO_MAP.get((city, state), "")
         return {"city": city, "state": state, "country": country, "metro": metro}
@@ -183,4 +192,4 @@ def normalize_installer_type(raw: str) -> str:
         if count >= 6:
             return "regional"
         return "local"
-    return "local"
+    return ""

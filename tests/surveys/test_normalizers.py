@@ -60,7 +60,7 @@ class TestNormalizeLocation:
         result = normalize_location("San Diego, CA")
         assert result["city"] == "San Diego"
         assert result["state"] == "CA"
-        assert result["metro"] == "San Diego"
+        assert result["metro"] == "San Diego Metro"
 
     def test_city_alias_sf(self):
         result = normalize_location("sf")
