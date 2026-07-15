@@ -2,7 +2,8 @@ from django.db.models import Count
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+
+from config.throttles import CloudflareScopedRateThrottle
 
 from apps.surveys.filters import QuoteSourceFilter, QuoteSubmissionFilter
 from apps.surveys.models import QuoteSource, QuoteSubmission
@@ -36,7 +37,7 @@ class QuoteSourceDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class IngestView(generics.CreateAPIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [CloudflareScopedRateThrottle]
     throttle_scope = "ingest"
     serializer_class = IngestRequestSerializer
 
