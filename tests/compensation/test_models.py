@@ -1,26 +1,27 @@
 import pytest
 
-from tests.compensation.factories import CompensationRecordFactory, RoleFactory, LocationFactory
+from tests.compensation.factories import LocationFactory, SolarQuoteFactory, SystemConfigFactory
 
 
 @pytest.mark.django_db
-class TestRoleModel:
+class TestSystemConfigModel:
     def test_str(self):
-        role = RoleFactory(normalized_title="Software Engineer")
-        assert str(role) == "Software Engineer"
+        config = SystemConfigFactory(panel_tier_label="LG Premium")
+        assert str(config) == "LG Premium"
 
-    def test_title_unique(self):
-        RoleFactory(title="Software Engineer")
+    def test_panel_brand_unique(self):
+        SystemConfigFactory(panel_brand="LG NeON 2")
         from django.db import IntegrityError
+
         with pytest.raises(IntegrityError):
-            RoleFactory(title="Software Engineer")
+            SystemConfigFactory(panel_brand="LG NeON 2")
 
 
 @pytest.mark.django_db
 class TestLocationModel:
     def test_str_with_city(self):
-        loc = LocationFactory(city="San Francisco", state="CA")
-        assert "San Francisco" in str(loc)
+        loc = LocationFactory(city="San Diego", state="CA")
+        assert "San Diego" in str(loc)
 
     def test_str_without_city(self):
         loc = LocationFactory(city="", state="", country="Remote")
@@ -28,13 +29,14 @@ class TestLocationModel:
 
 
 @pytest.mark.django_db
-class TestCompensationRecordModel:
-    def test_company_size_choices(self):
-        from apps.compensation.models import CompensationRecord
-        assert CompensationRecord.CompanySize.ENTERPRISE == "enterprise"
-        assert CompensationRecord.CompanySize.STARTUP == "startup"
+class TestSolarQuoteModel:
+    def test_installer_type_choices(self):
+        from apps.compensation.models import SolarQuote
 
-    def test_record_created(self):
-        record = CompensationRecordFactory(total_comp=250000)
-        assert record.total_comp == 250000
-        assert record.submission is not None
+        assert SolarQuote.InstallerType.LOCAL == "local"
+        assert SolarQuote.InstallerType.NATIONAL == "national"
+
+    def test_quote_created(self):
+        quote = SolarQuoteFactory(cost_per_watt=3.47)
+        assert float(quote.cost_per_watt) == 3.47
+        assert quote.submission is not None

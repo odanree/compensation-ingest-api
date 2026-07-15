@@ -12,13 +12,13 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="Role",
+            name="SystemConfig",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("title", models.CharField(max_length=200, unique=True)),
-                ("normalized_title", models.CharField(db_index=True, max_length=200)),
-                ("family", models.CharField(blank=True, max_length=100)),
-                ("level_order", models.PositiveSmallIntegerField(default=0)),
+                ("panel_brand", models.CharField(max_length=200, unique=True)),
+                ("panel_tier_label", models.CharField(db_index=True, max_length=200)),
+                ("panel_tier", models.CharField(blank=True, max_length=50)),
+                ("tier_order", models.PositiveSmallIntegerField(default=0)),
             ],
         ),
         migrations.CreateModel(
@@ -33,40 +33,61 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name="CompensationRecord",
+            name="SolarQuote",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("submission", models.OneToOneField(
                     on_delete=django.db.models.deletion.CASCADE,
-                    related_name="compensation_record",
-                    to="surveys.surveysubmission",
+                    related_name="solar_quote",
+                    to="surveys.quotesubmission",
                 )),
-                ("role", models.ForeignKey(
+                ("system_config", models.ForeignKey(
                     null=True,
                     on_delete=django.db.models.deletion.SET_NULL,
-                    related_name="records",
-                    to="compensation.role",
+                    related_name="quotes",
+                    to="compensation.systemconfig",
                 )),
                 ("location", models.ForeignKey(
                     null=True,
                     on_delete=django.db.models.deletion.SET_NULL,
-                    related_name="records",
+                    related_name="quotes",
                     to="compensation.location",
                 )),
-                ("level", models.CharField(blank=True, db_index=True, max_length=50)),
-                ("base_salary", models.DecimalField(decimal_places=2, max_digits=10, null=True)),
-                ("total_comp", models.DecimalField(decimal_places=2, max_digits=10, null=True)),
-                ("equity_value", models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ("bonus", models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ("years_experience", models.PositiveSmallIntegerField(blank=True, null=True)),
-                ("company_size", models.CharField(
+                ("system_size_band", models.CharField(blank=True, db_index=True, max_length=50)),
+                ("system_cost", models.DecimalField(
+                    decimal_places=2,
+                    help_text="Total installed cost in USD",
+                    max_digits=10,
+                    null=True,
+                )),
+                ("cost_per_watt", models.DecimalField(
+                    decimal_places=3,
+                    help_text="Cost per watt ($/W)",
+                    max_digits=6,
+                    null=True,
+                )),
+                ("incentives_value", models.DecimalField(
+                    blank=True,
+                    decimal_places=2,
+                    help_text="Estimated federal ITC + state rebates in USD",
+                    max_digits=10,
+                    null=True,
+                )),
+                ("annual_production_kwh", models.DecimalField(
+                    blank=True,
+                    decimal_places=2,
+                    help_text="Estimated annual production in kWh",
+                    max_digits=10,
+                    null=True,
+                )),
+                ("roof_age_years", models.PositiveSmallIntegerField(blank=True, null=True)),
+                ("installer_type", models.CharField(
                     blank=True,
                     choices=[
-                        ("startup", "Startup (1-50)"),
-                        ("small", "Small (51-200)"),
-                        ("mid", "Mid (201-1000)"),
-                        ("large", "Large (1001-5000)"),
-                        ("enterprise", "Enterprise (5000+)"),
+                        ("local", "Local (1\u20135 crews)"),
+                        ("regional", "Regional (6\u201320 locations)"),
+                        ("national", "National (21+ locations)"),
+                        ("utility", "Utility / Developer"),
                     ],
                     db_index=True,
                     max_length=20,
@@ -75,8 +96,14 @@ class Migration(migrations.Migration):
             ],
             options={
                 "indexes": [
-                    models.Index(fields=["role", "level", "company_size"], name="compensation_role_level_size_idx"),
-                    models.Index(fields=["location", "level"], name="compensation_loc_level_idx"),
+                    models.Index(
+                        fields=["system_config", "system_size_band", "installer_type"],
+                        name="solarquote_config_band_type_idx",
+                    ),
+                    models.Index(
+                        fields=["location", "system_size_band"],
+                        name="solarquote_location_band_idx",
+                    ),
                 ],
             },
         ),

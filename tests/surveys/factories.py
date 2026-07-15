@@ -1,33 +1,31 @@
 import factory
 
-from apps.surveys.models import Survey, SurveySubmission
+from apps.surveys.models import QuoteSource, QuoteSubmission
 
 
-class SurveyFactory(factory.django.DjangoModelFactory):
+class QuoteSourceFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = Survey
+        model = QuoteSource
 
-    name = factory.Sequence(lambda n: f"Survey {n}")
-    source = factory.Sequence(lambda n: f"source-{n}")
-    year = 2024
+    name = factory.Sequence(lambda n: f"Quote Source {n}")
+    installer_name = factory.Sequence(lambda n: f"installer-{n}")
+    quote_year = 2024
 
 
-class SurveySubmissionFactory(factory.django.DjangoModelFactory):
+class QuoteSubmissionFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = SurveySubmission
+        model = QuoteSubmission
 
-    survey = factory.SubFactory(SurveyFactory)
+    quote_source = factory.SubFactory(QuoteSourceFactory)
     raw_data = factory.LazyAttributeSequence(
         lambda o, n: {
-            "role_title": f"Software Engineer {n}",
-            "location": "San Francisco, CA",
-            "base_salary": 150000,
-            "total_comp": 220000 + n,
-            "level": "L4",
-            "years_experience": 5,
-            "company_size": "enterprise",
+            "panel_brand": "LG NeON 2",
+            "location": "San Diego, CA",
+            "system_size_kw": 7.2 + n * 0.1,
+            "system_cost": 25000 + n * 500,
+            "installer_type": "local",
         }
     )
     fingerprint = factory.LazyAttribute(
-        lambda o: SurveySubmission.compute_fingerprint(o.raw_data)
+        lambda o: QuoteSubmission.compute_fingerprint(o.raw_data)
     )

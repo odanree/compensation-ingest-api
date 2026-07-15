@@ -1,21 +1,22 @@
 import django_filters
 
-from apps.compensation.models import CompensationRecord
+from apps.compensation.models import SolarQuote
 
 
-class CompensationRecordFilter(django_filters.FilterSet):
-    role = django_filters.CharFilter(field_name="role__normalized_title", lookup_expr="icontains")
-    role_family = django_filters.CharFilter(field_name="role__family", lookup_expr="iexact")
-    location = django_filters.CharFilter(field_name="location__metro", lookup_expr="icontains")
+class SolarQuoteFilter(django_filters.FilterSet):
+    panel_tier = django_filters.CharFilter(
+        field_name="system_config__panel_tier", lookup_expr="iexact"
+    )
+    state = django_filters.CharFilter(field_name="location__state", lookup_expr="icontains")
     city = django_filters.CharFilter(field_name="location__city", lookup_expr="icontains")
-    country = django_filters.CharFilter(field_name="location__country", lookup_expr="iexact")
-    level = django_filters.CharFilter(lookup_expr="iexact")
-    company_size = django_filters.ChoiceFilter(choices=CompensationRecord.CompanySize.choices)
-    min_total_comp = django_filters.NumberFilter(field_name="total_comp", lookup_expr="gte")
-    max_total_comp = django_filters.NumberFilter(field_name="total_comp", lookup_expr="lte")
-    min_years_experience = django_filters.NumberFilter(field_name="years_experience", lookup_expr="gte")
-    max_years_experience = django_filters.NumberFilter(field_name="years_experience", lookup_expr="lte")
+    metro = django_filters.CharFilter(field_name="location__metro", lookup_expr="icontains")
+    system_size_band = django_filters.CharFilter(lookup_expr="iexact")
+    installer_type = django_filters.ChoiceFilter(choices=SolarQuote.InstallerType.choices)
+    min_cost_per_watt = django_filters.NumberFilter(field_name="cost_per_watt", lookup_expr="gte")
+    max_cost_per_watt = django_filters.NumberFilter(field_name="cost_per_watt", lookup_expr="lte")
+    min_system_cost = django_filters.NumberFilter(field_name="system_cost", lookup_expr="gte")
+    max_system_cost = django_filters.NumberFilter(field_name="system_cost", lookup_expr="lte")
 
     class Meta:
-        model = CompensationRecord
-        fields = ["level", "company_size"]
+        model = SolarQuote
+        fields = ["system_size_band", "installer_type"]

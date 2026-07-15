@@ -10,29 +10,29 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="Survey",
+            name="QuoteSource",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("name", models.CharField(max_length=200)),
-                ("source", models.CharField(max_length=100)),
-                ("year", models.PositiveSmallIntegerField()),
+                ("installer_name", models.CharField(max_length=100)),
+                ("quote_year", models.PositiveSmallIntegerField()),
                 ("description", models.TextField(blank=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                "ordering": ["-year"],
-                "unique_together": {("source", "year")},
+                "ordering": ["-quote_year"],
+                "unique_together": {("installer_name", "quote_year")},
             },
         ),
         migrations.CreateModel(
-            name="SurveySubmission",
+            name="QuoteSubmission",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("survey", models.ForeignKey(
+                ("quote_source", models.ForeignKey(
                     on_delete=django.db.models.deletion.CASCADE,
                     related_name="submissions",
-                    to="surveys.survey",
+                    to="surveys.quotesource",
                 )),
                 ("raw_data", models.JSONField()),
                 ("fingerprint", models.CharField(db_index=True, max_length=64, unique=True)),

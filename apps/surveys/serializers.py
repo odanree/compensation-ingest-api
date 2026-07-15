@@ -1,75 +1,98 @@
 from rest_framework import serializers
 
-from apps.surveys.models import Survey, SurveySubmission
+from apps.surveys.models import QuoteSource, QuoteSubmission
 
 
-class SurveySerializer(serializers.ModelSerializer):
+class QuoteSourceSerializer(serializers.ModelSerializer):
     submission_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
-        model = Survey
-        fields = ["id", "name", "source", "year", "description", "submission_count", "created_at", "updated_at"]
+        model = QuoteSource
+        fields = [
+            "id", "name", "installer_name", "quote_year",
+            "description", "submission_count", "created_at", "updated_at",
+        ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
-class SurveySubmissionSerializer(serializers.ModelSerializer):
+class QuoteSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SurveySubmission
-        fields = ["id", "survey", "fingerprint", "status", "error_message", "created_at", "processed_at"]
-        read_only_fields = ["id", "fingerprint", "status", "error_message", "created_at", "processed_at"]
+        model = QuoteSubmission
+        fields = [
+            "id", "quote_source", "fingerprint", "status",
+            "error_message", "created_at", "processed_at",
+        ]
+        read_only_fields = [
+            "id", "fingerprint", "status", "error_message",
+            "created_at", "processed_at",
+        ]
 
 
 class IngestRecordSerializer(serializers.Serializer):
-    role_title = serializers.CharField(required=False, allow_blank=True)
-    title = serializers.CharField(required=False, allow_blank=True)
+    """Validates a single raw solar quote record."""
+
+    # Panel / system
+    panel_brand = serializers.CharField(required=False, allow_blank=True, default="")
+    system_size_kw = serializers.FloatField(required=False, allow_null=True)
+    system_size_watts = serializers.IntegerField(required=False, allow_null=True)
+
+    # Costs
+    system_cost = serializers.FloatField(required=False, allow_null=True)
+    cost_per_watt = serializers.FloatField(required=False, allow_null=True)
+    incentives_value = serializers.FloatField(required=False, allow_null=True)
+
+    # Production estimate
+    annual_production_kwh = serializers.FloatField(required=False, allow_null=True)
+
+    # Property
     location = serializers.CharField(required=False, allow_blank=True, default="")
-    base_salary = serializers.FloatField(required=False, allow_null=True)
-    total_comp = serializers.FloatField(required=False, allow_null=True)
-    total_compensation = serializers.FloatField(required=False, allow_null=True)
-    equity_value = serializers.FloatField(required=False, allow_null=True)
-    equity = serializers.FloatField(required=False, allow_null=True)
-    bonus = serializers.FloatField(required=False, allow_null=True)
-    level = serializers.CharField(required=False, allow_blank=True, default="")
-    years_experience = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=50)
-    yoe = serializers.IntegerField(required=False, allow_null=True, min_value=0, max_value=50)
-    company_size = serializers.CharField(required=False, allow_blank=True, default="")
-    company_headcount = serializers.CharField(required=False, allow_blank=True, default="")
+    roof_age_years = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=100
+    )
+
+    # Installer
+    installer_type = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate(self, data):
-        role_title = data.get("role_title", "") or data.get("title", "")
-        if not role_title:
+        # Need at least one cost signal
+        has_cost = (
+            data.get("system_cost") is not None
+            or data.get("cost_per_watt") is not None
+        )
+        if not has_cost:
             raise serializers.ValidationError(
-                {"role_title": "At least one of 'role_title' or 'title' is required."}
+                {"system_cost": "At least one of 'system_cost' or 'cost_per_watt' is required."}
             )
 
-        total_comp = data.get("total_comp") or data.get("total_compensation")
-        if total_comp is not None and total_comp <= 0:
+        if data.get("system_cost") is not None and data["system_cost"] <= 0:
             raise serializers.ValidationError(
-                {"total_comp": "total_comp must be greater than 0."}
+                {"system_cost": "system_cost must be greater than 0."}
             )
 
-        base_salary = data.get("base_salary")
-        if base_salary is not None and base_salary <= 0:
+        if data.get("cost_per_watt") is not None and data["cost_per_watt"] <= 0:
             raise serializers.ValidationError(
-                {"base_salary": "base_salary must be greater than 0."}
+                {"cost_per_watt": "cost_per_watt must be greater than 0."}
+            )
+
+        if data.get("system_size_kw") is not None and data["system_size_kw"] <= 0:
+            raise serializers.ValidationError(
+                {"system_size_kw": "system_size_kw must be greater than 0."}
             )
 
         return data
 
 
 class IngestRequestSerializer(serializers.Serializer):
-    survey_id = serializers.IntegerField()
+    quote_source_id = serializers.IntegerField()
     records = serializers.ListField(
         child=serializers.DictField(),
         min_length=1,
         max_length=10000,
     )
 
-    def validate_survey_id(self, value):
-        from apps.surveys.models import Survey
-
-        if not Survey.objects.filter(pk=value).exists():
-            raise serializers.ValidationError(f"Survey {value} does not exist.")
+    def validate_quote_source_id(self, value):
+        if not QuoteSource.objects.filter(pk=value).exists():
+            raise serializers.ValidationError(f"QuoteSource {value} does not exist.")
         return value
 
     def validate_records(self, records):

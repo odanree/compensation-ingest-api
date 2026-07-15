@@ -3,32 +3,34 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from apps.surveys.filters import SurveyFilter, SurveySubmissionFilter
-from apps.surveys.models import Survey, SurveySubmission
+from apps.surveys.filters import QuoteSourceFilter, QuoteSubmissionFilter
+from apps.surveys.models import QuoteSource, QuoteSubmission
 from apps.surveys.serializers import (
     IngestRequestSerializer,
-    SurveySerializer,
-    SurveySubmissionSerializer,
+    QuoteSourceSerializer,
+    QuoteSubmissionSerializer,
 )
-from apps.surveys.tasks import process_submission
+from apps.surveys.tasks import process_quote
 
 
-class SurveyListCreateView(generics.ListCreateAPIView):
-    serializer_class = SurveySerializer
+class QuoteSourceListCreateView(generics.ListCreateAPIView):
+    serializer_class = QuoteSourceSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-    filterset_class = SurveyFilter
-    ordering_fields = ["year", "created_at"]
+    filterset_class = QuoteSourceFilter
+    ordering_fields = ["quote_year", "created_at"]
 
     def get_queryset(self):
-        return Survey.objects.annotate(submission_count=Count("submissions")).order_by("-year")
+        return QuoteSource.objects.annotate(
+            submission_count=Count("submissions")
+        ).order_by("-quote_year")
 
 
-class SurveyDetailView(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = SurveySerializer
+class QuoteSourceDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = QuoteSourceSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        return Survey.objects.annotate(submission_count=Count("submissions"))
+        return QuoteSource.objects.annotate(submission_count=Count("submissions"))
 
 
 class IngestView(generics.CreateAPIView):
@@ -39,28 +41,28 @@ class IngestView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        survey_id = serializer.validated_data["survey_id"]
+        quote_source_id = serializer.validated_data["quote_source_id"]
         records = serializer.validated_data["records"]
-        survey = Survey.objects.get(pk=survey_id)
+        quote_source = QuoteSource.objects.get(pk=quote_source_id)
 
         submitted = 0
         duplicates = 0
 
         for record in records:
-            fingerprint = SurveySubmission.compute_fingerprint(record)
-            submission, created = SurveySubmission.objects.get_or_create(
+            fingerprint = QuoteSubmission.compute_fingerprint(record)
+            submission, created = QuoteSubmission.objects.get_or_create(
                 fingerprint=fingerprint,
-                defaults={"survey": survey, "raw_data": record},
+                defaults={"quote_source": quote_source, "raw_data": record},
             )
             if created:
-                process_submission.delay(submission.pk)
+                process_quote.delay(submission.pk)
                 submitted += 1
             else:
                 duplicates += 1
 
         return Response(
             {
-                "survey_id": survey_id,
+                "quote_source_id": quote_source_id,
                 "submitted": submitted,
                 "duplicates": duplicates,
             },
@@ -68,11 +70,13 @@ class IngestView(generics.CreateAPIView):
         )
 
 
-class SubmissionListView(generics.ListAPIView):
-    serializer_class = SurveySubmissionSerializer
+class QuoteSubmissionListView(generics.ListAPIView):
+    serializer_class = QuoteSubmissionSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-    filterset_class = SurveySubmissionFilter
+    filterset_class = QuoteSubmissionFilter
     ordering_fields = ["created_at", "processed_at"]
 
     def get_queryset(self):
-        return SurveySubmission.objects.select_related("survey").order_by("-created_at")
+        return QuoteSubmission.objects.select_related("quote_source").order_by(
+            "-created_at"
+        )

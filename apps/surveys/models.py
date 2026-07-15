@@ -4,23 +4,27 @@ import json
 from django.db import models
 
 
-class Survey(models.Model):
+class QuoteSource(models.Model):
+    """A source of solar installation quotes (e.g., a specific installer or aggregator)."""
+
     name = models.CharField(max_length=200)
-    source = models.CharField(max_length=100)
-    year = models.PositiveSmallIntegerField()
+    installer_name = models.CharField(max_length=100)
+    quote_year = models.PositiveSmallIntegerField()
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("source", "year")
-        ordering = ["-year"]
+        unique_together = ("installer_name", "quote_year")
+        ordering = ["-quote_year"]
 
     def __str__(self):
-        return f"{self.name} ({self.year})"
+        return f"{self.name} ({self.quote_year})"
 
 
-class SurveySubmission(models.Model):
+class QuoteSubmission(models.Model):
+    """A single raw solar quote submitted for ingestion."""
+
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         PROCESSING = "processing", "Processing"
@@ -28,7 +32,9 @@ class SurveySubmission(models.Model):
         FAILED = "failed", "Failed"
         DUPLICATE = "duplicate", "Duplicate"
 
-    survey = models.ForeignKey(Survey, related_name="submissions", on_delete=models.CASCADE)
+    quote_source = models.ForeignKey(
+        QuoteSource, related_name="submissions", on_delete=models.CASCADE
+    )
     raw_data = models.JSONField()
     fingerprint = models.CharField(max_length=64, unique=True, db_index=True)
     status = models.CharField(

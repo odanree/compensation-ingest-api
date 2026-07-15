@@ -3,6 +3,6 @@ from django.urls import path
 from apps.compensation import views
 
 urlpatterns = [
-    path("compensation/", views.CompensationRecordListView.as_view(), name="compensation-list"),
-    path("compensation/summary/", views.CompensationSummaryView.as_view(), name="compensation-summary"),
+    path("quotes/", views.SolarQuoteListView.as_view(), name="solar-quote-list"),
+    path("quotes/summary/", views.CostSummaryView.as_view(), name="cost-summary"),
 ]

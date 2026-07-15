@@ -3,25 +3,23 @@ import json
 import pytest
 from django.urls import reverse
 
-from apps.surveys.models import SurveySubmission
-from tests.surveys.factories import SurveyFactory
+from apps.surveys.models import QuoteSubmission
+from tests.surveys.factories import QuoteSourceFactory
 
 
 @pytest.mark.django_db
 class TestIngestView:
     def test_successful_ingestion(self, api_client):
-        survey = SurveyFactory()
+        source = QuoteSourceFactory()
         payload = {
-            "survey_id": survey.pk,
+            "quote_source_id": source.pk,
             "records": [
                 {
-                    "role_title": "Software Engineer",
-                    "location": "San Francisco, CA",
-                    "total_comp": 200000,
-                    "base_salary": 150000,
-                    "level": "L4",
-                    "years_experience": 4,
-                    "company_size": "enterprise",
+                    "panel_brand": "LG NeON 2",
+                    "location": "San Diego, CA",
+                    "system_size_kw": 7.2,
+                    "system_cost": 25000,
+                    "installer_type": "local",
                 }
             ],
         }
@@ -34,18 +32,18 @@ class TestIngestView:
         data = response.json()
         assert data["submitted"] == 1
         assert data["duplicates"] == 0
-        assert SurveySubmission.objects.count() == 1
+        assert QuoteSubmission.objects.count() == 1
 
     def test_duplicate_detection(self, api_client):
-        survey = SurveyFactory()
+        source = QuoteSourceFactory()
         record = {
-            "role_title": "Product Manager",
-            "location": "New York, NY",
-            "total_comp": 180000,
+            "panel_brand": "SunPower Maxeon",
+            "location": "Phoenix, AZ",
+            "system_cost": 30000,
+            "cost_per_watt": 3.2,
         }
-        payload = {"survey_id": survey.pk, "records": [record]}
+        payload = {"quote_source_id": source.pk, "records": [record]}
 
-        # First ingest
         r1 = api_client.post(
             reverse("ingest"),
             data=json.dumps(payload),
@@ -53,7 +51,6 @@ class TestIngestView:
         )
         assert r1.status_code == 201
 
-        # Second ingest — same record
         r2 = api_client.post(
             reverse("ingest"),
             data=json.dumps(payload),
@@ -63,16 +60,17 @@ class TestIngestView:
         data = r2.json()
         assert data["submitted"] == 0
         assert data["duplicates"] == 1
-        assert SurveySubmission.objects.count() == 1
+        assert QuoteSubmission.objects.count() == 1
 
-    def test_missing_role_title_returns_400(self, api_client):
-        survey = SurveyFactory()
+    def test_missing_cost_fields_returns_400(self, api_client):
+        source = QuoteSourceFactory()
         payload = {
-            "survey_id": survey.pk,
+            "quote_source_id": source.pk,
             "records": [
                 {
+                    "panel_brand": "LONGi",
                     "location": "Austin, TX",
-                    "total_comp": 150000,
+                    # no system_cost or cost_per_watt
                 }
             ],
         }
@@ -83,23 +81,10 @@ class TestIngestView:
         )
         assert response.status_code == 400
 
-    def test_invalid_survey_id_returns_400(self, api_client):
+    def test_invalid_quote_source_returns_400(self, api_client):
         payload = {
-            "survey_id": 99999,
-            "records": [{"role_title": "SWE", "total_comp": 150000}],
-        }
-        response = api_client.post(
-            reverse("ingest"),
-            data=json.dumps(payload),
-            content_type="application/json",
-        )
-        assert response.status_code == 400
-
-    def test_negative_total_comp_returns_400(self, api_client):
-        survey = SurveyFactory()
-        payload = {
-            "survey_id": survey.pk,
-            "records": [{"role_title": "SWE", "total_comp": -1000}],
+            "quote_source_id": 99999,
+            "records": [{"panel_brand": "LG", "system_cost": 20000}],
         }
         response = api_client.post(
             reverse("ingest"),
@@ -109,12 +94,12 @@ class TestIngestView:
         assert response.status_code == 400
 
     def test_bulk_multiple_records(self, api_client):
-        survey = SurveyFactory()
+        source = QuoteSourceFactory()
         records = [
-            {"role_title": f"Engineer {i}", "total_comp": 100000 + i * 10000}
+            {"panel_brand": f"Brand {i}", "system_cost": 20000 + i * 1000, "cost_per_watt": 3.0 + i * 0.1}
             for i in range(5)
         ]
-        payload = {"survey_id": survey.pk, "records": records}
+        payload = {"quote_source_id": source.pk, "records": records}
         response = api_client.post(
             reverse("ingest"),
             data=json.dumps(payload),
@@ -125,19 +110,23 @@ class TestIngestView:
 
 
 @pytest.mark.django_db
-class TestSurveyListView:
-    def test_list_surveys(self, api_client):
-        SurveyFactory.create_batch(3)
-        response = api_client.get(reverse("survey-list"))
+class TestQuoteSourceListView:
+    def test_list_quote_sources(self, api_client):
+        QuoteSourceFactory.create_batch(3)
+        response = api_client.get(reverse("quote-source-list"))
         assert response.status_code == 200
         assert response.json()["count"] == 3
 
-    def test_create_survey(self, auth_client):
-        payload = {"name": "Levels.fyi 2024", "source": "levels", "year": 2024}
+    def test_create_quote_source(self, auth_client):
+        payload = {
+            "name": "SunRun CA 2024",
+            "installer_name": "sunrun",
+            "quote_year": 2024,
+        }
         response = auth_client.post(
-            reverse("survey-list"),
+            reverse("quote-source-list"),
             data=json.dumps(payload),
             content_type="application/json",
         )
         assert response.status_code == 201
-        assert response.json()["source"] == "levels"
+        assert response.json()["installer_name"] == "sunrun"

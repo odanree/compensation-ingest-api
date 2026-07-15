@@ -1,14 +1,16 @@
 from django.db import models
 
 
-class Role(models.Model):
-    title = models.CharField(max_length=200, unique=True)
-    normalized_title = models.CharField(max_length=200, db_index=True)
-    family = models.CharField(max_length=100, blank=True)
-    level_order = models.PositiveSmallIntegerField(default=0)
+class SystemConfig(models.Model):
+    """Normalized solar panel configuration (brand → tier mapping)."""
+
+    panel_brand = models.CharField(max_length=200, unique=True)
+    panel_tier_label = models.CharField(max_length=200, db_index=True)
+    panel_tier = models.CharField(max_length=50, blank=True)  # standard / premium / premium-plus
+    tier_order = models.PositiveSmallIntegerField(default=0)
 
     def __str__(self):
-        return self.normalized_title
+        return self.panel_tier_label
 
 
 class Location(models.Model):
@@ -19,44 +21,61 @@ class Location(models.Model):
     metro = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
-        return f"{self.city}, {self.state}" if self.city else self.country
+        return f"{self.city}, {self.state}" if self.city else self.state or self.country
 
 
-class CompensationRecord(models.Model):
-    class CompanySize(models.TextChoices):
-        STARTUP = "startup", "Startup (1-50)"
-        SMALL = "small", "Small (51-200)"
-        MID = "mid", "Mid (201-1000)"
-        LARGE = "large", "Large (1001-5000)"
-        ENTERPRISE = "enterprise", "Enterprise (5000+)"
+class SolarQuote(models.Model):
+    """Normalized individual solar installation quote."""
+
+    class InstallerType(models.TextChoices):
+        LOCAL = "local", "Local (1–5 crews)"
+        REGIONAL = "regional", "Regional (6–20 locations)"
+        NATIONAL = "national", "National (21+ locations)"
+        UTILITY = "utility", "Utility / Developer"
 
     submission = models.OneToOneField(
-        "surveys.SurveySubmission",
+        "surveys.QuoteSubmission",
         on_delete=models.CASCADE,
-        related_name="compensation_record",
+        related_name="solar_quote",
     )
-    role = models.ForeignKey(
-        Role, on_delete=models.SET_NULL, null=True, related_name="records"
+    system_config = models.ForeignKey(
+        SystemConfig, on_delete=models.SET_NULL, null=True, related_name="quotes"
     )
     location = models.ForeignKey(
-        Location, on_delete=models.SET_NULL, null=True, related_name="records"
+        Location, on_delete=models.SET_NULL, null=True, related_name="quotes"
     )
-    level = models.CharField(max_length=50, blank=True, db_index=True)
-    base_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    total_comp = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    equity_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    bonus = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    years_experience = models.PositiveSmallIntegerField(null=True, blank=True)
-    company_size = models.CharField(
-        max_length=20, choices=CompanySize.choices, blank=True, db_index=True
+    system_size_band = models.CharField(max_length=50, blank=True, db_index=True)
+    system_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, help_text="Total installed cost in USD"
+    )
+    cost_per_watt = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, help_text="Cost per watt ($/W)"
+    )
+    incentives_value = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Estimated federal ITC + state rebates in USD"
+    )
+    annual_production_kwh = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Estimated annual production in kWh"
+    )
+    roof_age_years = models.PositiveSmallIntegerField(null=True, blank=True)
+    installer_type = models.CharField(
+        max_length=20, choices=InstallerType.choices, blank=True, db_index=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=["role", "level", "company_size"]),
-            models.Index(fields=["location", "level"]),
+            models.Index(
+                fields=["system_config", "system_size_band", "installer_type"],
+                name="solarquote_config_band_type_idx",
+            ),
+            models.Index(
+                fields=["location", "system_size_band"],
+                name="solarquote_location_band_idx",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.role} @ {self.location} - ${self.total_comp}"
+        return f"{self.system_config} @ {self.location} — ${self.cost_per_watt}/W"

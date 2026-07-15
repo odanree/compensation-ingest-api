@@ -1,18 +1,18 @@
 from django.contrib import admin
 
-from apps.surveys.models import Survey, SurveySubmission
+from apps.surveys.models import QuoteSource, QuoteSubmission
 
 
-@admin.register(Survey)
-class SurveyAdmin(admin.ModelAdmin):
-    list_display = ["name", "source", "year", "created_at"]
-    list_filter = ["year", "source"]
-    search_fields = ["name", "source"]
+@admin.register(QuoteSource)
+class QuoteSourceAdmin(admin.ModelAdmin):
+    list_display = ["name", "installer_name", "quote_year", "created_at"]
+    list_filter = ["quote_year"]
+    search_fields = ["name", "installer_name"]
 
 
-@admin.register(SurveySubmission)
-class SurveySubmissionAdmin(admin.ModelAdmin):
-    list_display = ["pk", "survey", "status", "created_at", "processed_at"]
-    list_filter = ["status", "survey"]
+@admin.register(QuoteSubmission)
+class QuoteSubmissionAdmin(admin.ModelAdmin):
+    list_display = ["pk", "quote_source", "status", "created_at", "processed_at"]
+    list_filter = ["status", "quote_source"]
     search_fields = ["fingerprint"]
     readonly_fields = ["fingerprint", "raw_data"]
