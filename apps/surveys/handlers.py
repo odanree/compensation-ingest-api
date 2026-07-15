@@ -19,7 +19,6 @@ is loaded will raise UnknownIngestHandler at dispatch time.
 from typing import Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rest_framework.serializers import Serializer
     from apps.surveys.models import QuoteSubmission
 
 Handler = Callable[["QuoteSubmission"], None]
