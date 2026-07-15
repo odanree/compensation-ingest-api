@@ -87,7 +87,7 @@ class IngestRequestSerializer(serializers.Serializer):
     records = serializers.ListField(
         child=serializers.DictField(),
         min_length=1,
-        max_length=10000,
+        max_length=100,
     )
 
     def validate_quote_source_id(self, value):

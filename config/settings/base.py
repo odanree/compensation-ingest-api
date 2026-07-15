@@ -10,7 +10,7 @@ env = environ.Env(
 
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
 
-SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production")
+SECRET_KEY = env("SECRET_KEY")
 
 DEBUG = env("DEBUG", default=False)
 
@@ -98,7 +98,20 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/hour",
+        "user": "600/hour",
+        "ingest": "10/minute",
+    },
 }
+
+# Cap request body at 512 KB — records payload is small structured JSON; larger
+# bodies are almost certainly abuse rather than legitimate bulk ingest.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 512 * 1024
 
 # Celery
 CELERY_BROKER_URL = env("REDIS_URL", default="redis://localhost:6379/0")
