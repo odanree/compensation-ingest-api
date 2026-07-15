@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
                 "indexes": [
                     models.Index(
                         fields=["system_config", "system_size_band", "installer_type"],
-                        name="solarquote_config_band_type_idx",
+                        name="sq_config_band_installer_idx",
                     ),
                     models.Index(
                         fields=["location", "system_size_band"],
