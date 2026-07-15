@@ -34,6 +34,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Must run before SecurityMiddleware so is_secure()/REMOTE_ADDR see the
+    # real client IP for the SSL-redirect check and downstream throttling.
+    "config.middleware.CloudflareRealIPMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
