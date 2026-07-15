@@ -16,3 +16,14 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# Shared Redis cache — required for DRF throttling under multi-worker gunicorn.
+# LocMemCache (Django's default) is per-process, so each worker would keep its
+# own rate-limit counters and the effective ceiling would be N_workers × rate.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_URL", default="redis://localhost:6379/0"),
+        "KEY_PREFIX": "solar_ingest",
+    },
+}
