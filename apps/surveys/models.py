@@ -5,12 +5,24 @@ from django.db import models
 
 
 class QuoteSource(models.Model):
-    """A source of solar installation quotes (e.g., a specific installer or aggregator)."""
+    """A source of solar installation quotes (e.g., a specific installer or aggregator).
+
+    Also carries a `handler_key` pointing at which registered ingest handler
+    should process submissions from this source — the ingest pipeline in
+    apps.surveys is domain-agnostic; each domain plugs in its own handler
+    via `@register_ingest_handler(key)` in apps.<domain>.handlers.
+    """
 
     name = models.CharField(max_length=200)
     installer_name = models.CharField(max_length=100)
     quote_year = models.PositiveSmallIntegerField()
     description = models.TextField(blank=True)
+    handler_key = models.CharField(
+        max_length=50,
+        default="solar_quote",
+        db_index=True,
+        help_text="Registered ingest handler that processes this source's submissions.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

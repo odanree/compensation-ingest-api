@@ -12,7 +12,7 @@ from apps.surveys.serializers import (
     QuoteSourceSerializer,
     QuoteSubmissionSerializer,
 )
-from apps.surveys.tasks import process_quote
+from apps.surveys.tasks import process_submission
 
 
 class QuoteSourceListCreateView(generics.ListCreateAPIView):
@@ -59,7 +59,7 @@ class IngestView(generics.CreateAPIView):
                 defaults={"quote_source": quote_source, "raw_data": record},
             )
             if created:
-                process_quote.delay(submission.pk)
+                process_submission.delay(submission.pk)
                 submitted += 1
             else:
                 duplicates += 1

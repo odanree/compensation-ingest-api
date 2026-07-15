@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     # Local
     "apps.surveys",
     "apps.compensation",
+    "apps.jobposts",
 ]
 
 MIDDLEWARE = [
